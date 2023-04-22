@@ -1,0 +1,93 @@
+openapi: 3.0.3
+info:
+  title: Agartex Authentication Service
+  description: |-
+    This is a server for authenticating users
+  version: 1.0.0
+servers:
+  - url: some_domain
+tags:
+  - name: auth
+    description: Authentication operations
+paths:
+  /sessions:
+    post:
+      summary: Creates a new login session for the given user
+      tags:
+        - auth
+      description: |-
+        The session ID is returned in a cookie called 'RSESSID' and it must be included in authentication.
+        Required options: Secure, HttpOnly
+      requestBody:
+        description: Login Credentials
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        201:
+          description: Successfully created session
+          headers:
+            Set-Cookie:
+              description: Session token
+              schema:
+                type: string
+                example: RSESSID=token_value; Secure; HttpOnly
+        400:
+          description: Malformed request body
+        401:
+          description: Authentication using supplied email and password failed
+        415:
+          description: Unsupported media type
+        422:
+          description: Request body validation errors (e.g. missing password field)
+          content:
+            text/plain:
+              schema:
+                type: string
+  
+  /users:
+    get:
+      summary: Gets the user associated with the given sessionId in RSESSID cookie
+      tags:
+        - auth
+      security:
+        - session_id: []
+      parameters:
+        - in: cookie
+          name: RSESSID
+          schema:
+            type: string
+          required: true
+          description: ID of the session
+      operationId: verify
+      responses:
+        200:
+          description: Adds user ID to headers
+          headers:
+            X-User-Id:
+              description: Authenticated User ID
+              schema:
+                type: integer
+                example: 1234
+        400:
+          description: Malformed request
+        401:
+          description: Could not verify the given session ID
+
+components:
+  schemas:
+    Credentials:
+      type: object
+      properties:
+        email:
+          type: string
+          example: email@email.com
+        password:
+          type: string
+          example: Password1@
+  securitySchemes:
+    session_id:
+      type: apiKey
+      in: cookie
+      name: RSESSID
