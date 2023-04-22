@@ -7,5 +7,5 @@ RUN cargo search --limit 0
 COPY . .
 RUN cargo build --release
 
-EXPOSE 3001
+EXPOSE 3100
 ENTRYPOINT [ "/app/src/target/release/agartex-authentication" ]
