@@ -32,6 +32,7 @@ pub async fn run() -> anyhow::Result<()> {
 }
 
 #[tokio::main]
+#[tracing::instrument]
 async fn main() {
     info!("Starting application");
     if let Err(err) = run().await {
