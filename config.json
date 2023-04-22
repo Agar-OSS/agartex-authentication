@@ -1,0 +1,7 @@
+{
+    "server_addr": "0.0.0.0:3001",
+    "database_addr": "postgres://localhost:5432/agartex-db",
+    "session_cookie_name": "RSESSID",
+    "session_length_seconds": 2592000,
+    "user_id_header": "X-User-Id"
+}
