@@ -17,7 +17,7 @@ pub struct BcryptHashService {
 impl BcryptHashService {
     pub fn new() -> Self {
         Self {
-            hash_cost: constants::HASH_COST
+            hash_cost: *constants::HASH_COST
         }
     }
 }

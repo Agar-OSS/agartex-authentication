@@ -43,7 +43,7 @@ fn mock_ok_session() -> Session {
     Session {
         id: mock_session_id(),
         user: mock_user(),
-        expires: Utc::now().timestamp() + CONFIG.session_length_seconds
+        expires: Utc::now().timestamp() + *SESSION_LENGTH_SECONDS
     }
 }
 

@@ -4,7 +4,7 @@ use rand::RngCore;
 use sqlx::types::chrono::{Utc, NaiveDateTime, DateTime};
 use tracing::{warn, error, info};
 
-use crate::{domain::{users::{Credentials, User}, sessions::Session}, config::CONFIG, repository::{sessions::{SessionRepository, SessionInsertError, SessionGetError}, users::{UserRepository, UserGetError}}};
+use crate::{domain::{users::{Credentials, User}, sessions::Session}, repository::{sessions::{SessionRepository, SessionInsertError, SessionGetError}, users::{UserRepository, UserGetError}}, constants::SESSION_LENGTH_SECONDS};
 
 use super::hash::HashService;
 
@@ -89,7 +89,7 @@ where
         let session = Session {
             id: Self::generate_session_id(),
             user,
-            expires: Utc::now().timestamp() + CONFIG.session_length_seconds
+            expires: Utc::now().timestamp() + *SESSION_LENGTH_SECONDS
         };
 
         match self.session_repository.insert(&session).await {

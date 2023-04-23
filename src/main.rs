@@ -1,4 +1,3 @@
-mod config;
 mod constants;
 mod control;
 mod database;
@@ -9,7 +8,7 @@ mod service;
 
 use tracing::{error, info};
 
-use config::CONFIG;
+use constants::SERVER_URL;
 
 
 #[tracing::instrument]
@@ -25,7 +24,7 @@ pub async fn run() -> anyhow::Result<()> {
     };
 
     info!("Running server!");
-    axum::Server::try_bind(&CONFIG.server_addr)?
+    axum::Server::try_bind(&SERVER_URL)?
         .serve(routing::main_router(&pool).into_make_service())
         .await
         .map_err(anyhow::Error::from)

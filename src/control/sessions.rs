@@ -5,7 +5,7 @@ use axum_extra::extract::{CookieJar, cookie::Cookie};
 use cookie::time::OffsetDateTime;
 use tracing::info;
 
-use crate::{config::CONFIG, domain::users::Credentials, service::sessions::{SessionService, LoginError}};
+use crate::{domain::users::Credentials, service::sessions::{SessionService, LoginError}, constants::SESSION_COOKIE_NAME};
 
 #[tracing::instrument(skip_all, fields(email = credentials.email))]
 pub async fn post_sessions<T: SessionService + Debug>(
@@ -24,7 +24,7 @@ pub async fn post_sessions<T: SessionService + Debug>(
         Ok(session) => session
     };
 
-    let cookie = Cookie::build(&CONFIG.session_cookie_name, session.id)
+    let cookie = Cookie::build(SESSION_COOKIE_NAME.as_str(), session.id)
         .expires(OffsetDateTime::from_unix_timestamp(session.expires).unwrap())
         .http_only(true)
         // .secure(true) <-- add this when TLS is set up

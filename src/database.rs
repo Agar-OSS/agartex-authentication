@@ -1,6 +1,6 @@
 use sqlx::{Error, postgres::{PgPool, PgConnectOptions}};
 
-use crate::config::CONFIG;
+use crate::constants::FALLBACK_DB_URL;
 
 pub async fn create_conn_pool() -> Result<PgPool, Error> {
     // https://www.postgresql.org/docs/current/libpq-envars.html
@@ -10,7 +10,7 @@ pub async fn create_conn_pool() -> Result<PgPool, Error> {
     let options = PgConnectOptions::new();
     let pool = match PgPool::connect_with(options).await {
         Ok(pool) => pool,
-        Err(_) => PgPool::connect(CONFIG.database_addr.as_str()).await?
+        Err(_) => PgPool::connect(FALLBACK_DB_URL).await?
     };
     sqlx::migrate!().run(&pool).await?;
     Ok(pool)
