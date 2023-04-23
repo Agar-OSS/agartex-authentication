@@ -9,6 +9,15 @@ RUN cargo build --release
 
 COPY . .
 RUN cargo build --release
+FROM debian:10.13-slim
+
+WORKDIR /app
+RUN chmod 777 .
+
+RUN useradd user
+USER user
+
+COPY --from=builder /app/src/target/release/agartex-authentication .
 
 EXPOSE 3100
-ENTRYPOINT [ "/app/src/target/release/agartex-authentication" ]
+ENTRYPOINT [ "./agartex-authentication" ]
