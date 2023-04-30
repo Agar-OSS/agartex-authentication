@@ -4,5 +4,5 @@
 /.gitignore
 /LICENSE
 /README.md
-/target
 /swagger.yaml
+/target
