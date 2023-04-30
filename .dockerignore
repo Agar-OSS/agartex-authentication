@@ -1,8 +1,8 @@
-/compose.yaml
 /Dockerfile
 /.dockerignore
 /.git
 /.gitignore
 /LICENSE
 /README.md
+/swagger.yaml
 /target
