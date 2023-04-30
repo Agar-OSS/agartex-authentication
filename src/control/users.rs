@@ -4,7 +4,7 @@ use axum::{Extension, http::StatusCode, response::{AppendHeaders, IntoResponse}}
 use axum_extra::extract::{CookieJar};
 use tracing::{info, warn};
 
-use crate::{service::sessions::{SessionService, SessionVerifyError}, constants::{SESSION_COOKIE_NAME, USER_ID_HEADER}};
+use crate::{service::{sessions::{SessionService, SessionVerifyError}, users::{UserService, UserCreationError}}, constants::{SESSION_COOKIE_NAME, USER_ID_HEADER}, validation::ValidatedJson, domain::users::Credentials};
 
 #[tracing::instrument(skip(service))]
 pub async fn get_users<T: SessionService + Debug>(
@@ -35,4 +35,19 @@ pub async fn get_users<T: SessionService + Debug>(
     ]);
 
     Ok(headers)
+}
+
+#[tracing::instrument(skip_all, fields(email = credentials.email))]
+pub async fn post_users<T: UserService + Debug>(
+    Extension(service): Extension<T>,
+    ValidatedJson(credentials): ValidatedJson<Credentials>
+) -> Result<impl IntoResponse, StatusCode> {
+    info!("Received registration attempt");
+
+    service.register(credentials).await.map_err(|err| {
+        match err {
+            UserCreationError::DuplicateEmail => StatusCode::CONFLICT,
+            UserCreationError::Unknown => StatusCode::INTERNAL_SERVER_ERROR
+        }
+    })
 }
