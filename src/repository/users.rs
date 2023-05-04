@@ -1,10 +1,12 @@
+use std::str::FromStr;
+
 use axum::async_trait;
 use http::StatusCode;
 use mockall::automock;
-use reqwest::Client;
-use tracing::{error, info};
+use reqwest::{Client, Url};
+use tracing::error;
 
-use crate::domain::users::{User, Credentials};
+use crate::domain::users::{User, UserData};
 
 pub enum UserGetError {
     Missing,
@@ -20,20 +22,20 @@ pub enum UserInsertError {
 #[async_trait]
 pub trait UserRepository {
     async fn get_by_email(&self, email: &str) -> Result<User, UserGetError>;
-    async fn insert(&self, credentials: Credentials) -> Result<(), UserInsertError>;
+    async fn insert(&self, user_data: UserData) -> Result<(), UserInsertError>;
 }
 
 
 #[derive(Debug, Clone)]
 pub struct HttpUserRepository {
-    manager_users_url: String,
+    manager_users_url: Url,
     client: Client
 }
 
 impl HttpUserRepository {
     pub fn new(url: &str) -> Self {
         Self {
-            manager_users_url: String::from(url),
+            manager_users_url: Url::from_str(url).unwrap(),
             client: Client::new()
         }
     }
@@ -41,57 +43,56 @@ impl HttpUserRepository {
 
 #[async_trait]
 impl UserRepository for HttpUserRepository {
-    #[tracing::instrument(skip(self))]
-    async fn insert(&self, credentials: Credentials) -> Result<(), UserInsertError> {
+    #[tracing::instrument(skip_all)]
+    async fn insert(&self, user_data: UserData) -> Result<(), UserInsertError> {
         let req = self.client
-            .post(self.manager_users_url.as_str())
-            .json(&credentials);
-
-        info!(?req);
-        
-        match req.send().await {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                error!(%err);
-                let status = match err.status() {
-                    None => return Err(UserInsertError::Unknown),
-                    Some(status) => status
-                };
-
-                match status {
-                    StatusCode::CONFLICT => Err(UserInsertError::Duplicate),
-                    _ => Err(UserInsertError::Unknown)
-                }
-            }
-        }
-    }
-
-    #[tracing::instrument(skip(self))]
-    async fn get_by_email(&self, email: &str) -> Result<User, UserGetError> {
-        let url = self.manager_users_url.clone() + "/" + email;
-        
-        let req = self.client
-            .get(url);
-
-        info!(?req);
+            .post(self.manager_users_url.clone())
+            .json(&user_data);
 
         let res = match req.send().await {
             Ok(res) => res,
             Err(err) => {
                 error!(%err);
-                let status = match err.status() {
-                    None => return Err(UserGetError::Unknown),
-                    Some(status) => status
-                };
-
-                return match status {
-                    StatusCode::NOT_FOUND => Err(UserGetError::Missing),
-                    _ => Err(UserGetError::Unknown)
-                }
+                return Err(UserInsertError::Unknown);
             }
         };
 
-        res.json::<User>().await.map_err(|err| {
+        match res.status() {
+            StatusCode::CREATED => Ok(()),
+            StatusCode::CONFLICT => Err(UserInsertError::Duplicate),
+            _ => Err(UserInsertError::Unknown)
+        }
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn get_by_email(&self, email: &str) -> Result<User, UserGetError> {
+        let mut url = self.manager_users_url.clone();
+        match url.path_segments_mut() {
+            Ok(mut path) => path.extend([email]),
+            Err(_) => {
+                error!("Bad Resource Management URL: {:?}", self.manager_users_url);
+                return Err(UserGetError::Unknown);
+            }
+        };
+        
+        let req = self.client
+            .get(url);
+
+        let res = match req.send().await {
+            Ok(res) => res,
+            Err(err) => {
+                error!(%err);
+                return Err(UserGetError::Unknown);
+            }
+        };
+
+        let body = match res.status() {
+            StatusCode::OK => res.json::<User>(),
+            StatusCode::NOT_FOUND => return Err(UserGetError::Missing),
+            _ => return Err(UserGetError::Unknown)
+        };
+
+        body.await.map_err(|err| {
             error!(%err);
             UserGetError::Unknown
         })
