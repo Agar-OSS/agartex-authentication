@@ -2,7 +2,7 @@ use axum::async_trait;
 use mockall::automock;
 use tracing::{error, info};
 
-use crate::{domain::users::Credentials, repository::users::{UserInsertError, UserRepository}};
+use crate::{domain::users::{Credentials, UserData}, repository::users::{UserInsertError, UserRepository}};
 
 use super::hash::HashService;
 
@@ -58,7 +58,7 @@ where
             }
         };
 
-        match self.repository.insert(Credentials { email: credentials.email, password: password_hash}).await {
+        match self.repository.insert(UserData { email: credentials.email, password_hash }).await {
             Ok(_) => {
                 info!("Registration attempt succeeded");
                 Ok(())

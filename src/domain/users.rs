@@ -11,7 +11,7 @@ pub struct User {
     pub password_hash: String
 }
 
-#[derive(Debug, Deserialize, Serialize, Validate, PartialEq)]
+#[derive(Debug, Deserialize, Validate, PartialEq)]
 pub struct Credentials {
     #[validate(email)]
     pub email: String,
@@ -52,4 +52,10 @@ fn contains_special(password: &str) -> Result<(), ValidationError> {
         return Err(ValidationError::new("special_character"))
     }
     Ok(())
+}
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct UserData {
+    pub email: String,
+    pub password_hash: String
 }

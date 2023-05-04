@@ -23,10 +23,10 @@ fn mock_credentials() -> Credentials {
     }
 }
 
-fn mock_hashed_credentials() -> Credentials {
-    Credentials {
+fn mock_hashed_credentials() -> UserData {
+    UserData {
         email: mock_email(),
-        password: mock_hashed_password()
+        password_hash: mock_hashed_password()
     }
 }
 
