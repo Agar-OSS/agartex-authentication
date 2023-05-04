@@ -9,6 +9,8 @@ servers:
 tags:
   - name: auth
     description: Authentication operations
+  - name: user
+    description: User CRUD operations
 paths:
   /sessions:
     post:
@@ -74,6 +76,26 @@ paths:
           description: Malformed request
         401:
           description: Could not verify the given session ID
+    post:
+      summary: Registers user
+      tags:
+        - user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        201:
+          description: Successfully created user
+        400:
+          description: Malformed request
+        409:
+          description: Duplicate email
+        415:
+          description: Bad request body type
+        422:
+          description: Validation errors
 
 components:
   schemas:

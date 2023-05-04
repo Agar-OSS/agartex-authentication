@@ -1,7 +1,8 @@
 use axum::async_trait;
+use http::StatusCode;
 use mockall::automock;
-use sqlx::PgPool;
-use tracing::error;
+use reqwest::Client;
+use tracing::{error, info};
 
 use crate::domain::users::{User, Credentials};
 
@@ -22,57 +23,77 @@ pub trait UserRepository {
     async fn insert(&self, credentials: Credentials) -> Result<(), UserInsertError>;
 }
 
+
 #[derive(Debug, Clone)]
-pub struct PgUserRepository {
-    pub pool: PgPool
+pub struct HttpUserRepository {
+    manager_users_url: String,
+    client: Client
 }
 
-
-impl PgUserRepository {
-    pub fn new(pool: &PgPool) -> Self {
-        Self { pool: pool.clone() }
+impl HttpUserRepository {
+    pub fn new(url: &str) -> Self {
+        Self {
+            manager_users_url: String::from(url),
+            client: Client::new()
+        }
     }
 }
 
 #[async_trait]
-impl UserRepository for PgUserRepository {
+impl UserRepository for HttpUserRepository {
+    #[tracing::instrument(skip(self))]
+    async fn insert(&self, credentials: Credentials) -> Result<(), UserInsertError> {
+        let req = self.client
+            .post(self.manager_users_url.as_str())
+            .json(&credentials);
+
+        info!(?req);
+        
+        match req.send().await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                error!(%err);
+                let status = match err.status() {
+                    None => return Err(UserInsertError::Unknown),
+                    Some(status) => status
+                };
+
+                match status {
+                    StatusCode::CONFLICT => Err(UserInsertError::Duplicate),
+                    _ => Err(UserInsertError::Unknown)
+                }
+            }
+        }
+    }
+
     #[tracing::instrument(skip(self))]
     async fn get_by_email(&self, email: &str) -> Result<User, UserGetError> {
-        let result = sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
-            .bind(email)
-            .fetch_optional(&self.pool)
-            .await;
-        match result {
-            Ok(Some(user)) => Ok(user),
-            Ok(None) => Err(UserGetError::Missing),
+        let url = self.manager_users_url.clone() + "/" + email;
+        
+        let req = self.client
+            .get(url);
+
+        info!(?req);
+
+        let res = match req.send().await {
+            Ok(res) => res,
             Err(err) => {
                 error!(%err);
-                Err(UserGetError::Unknown)
-            }
-        }
-    }
+                let status = match err.status() {
+                    None => return Err(UserGetError::Unknown),
+                    Some(status) => status
+                };
 
-    #[tracing::instrument(skip_all, fields(email = credentials.email))]
-    async fn insert(&self, credentials: Credentials) -> Result<(), UserInsertError> {
-        let result = sqlx::query(
-            "INSERT INTO users (email, password_hash) 
-            VALUES ($1, $2)
-            ON CONFLICT DO NOTHING
-        ")
-            .bind(&credentials.email)
-            .bind(&credentials.password)
-            .execute(&self.pool)
-            .await;
-
-        match result {
-            Ok(result) => {
-                if result.rows_affected() > 0 { Ok(()) } else { Err(UserInsertError::Duplicate) }
-            },
-            Err(err) => {
-                error!(%err);
-                Err(UserInsertError::Unknown)
+                return match status {
+                    StatusCode::NOT_FOUND => Err(UserGetError::Missing),
+                    _ => Err(UserGetError::Unknown)
+                }
             }
-        }
+        };
+
+        res.json::<User>().await.map_err(|err| {
+            error!(%err);
+            UserGetError::Unknown
+        })
     }
 }
-

@@ -1,2 +1,3 @@
-pub mod sessions;
 pub mod hash;
+pub mod sessions;
+pub mod users;

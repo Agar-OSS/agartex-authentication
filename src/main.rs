@@ -5,6 +5,7 @@ mod domain;
 mod repository;
 mod routing;
 mod service;
+mod validation;
 
 use tracing::{error, info};
 
