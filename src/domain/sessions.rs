@@ -1,12 +1,18 @@
-use sqlx;
+use serde::{Serialize, Deserialize};
 
 use super::users::User;
 
-#[derive(sqlx::FromRow, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Session {
-    #[sqlx(rename = "session_id")]
     pub id: String,
-    #[sqlx(flatten)]
     pub user: User,
+    pub expires: i64
+}
+
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct SessionData {
+    pub id: String,
+    pub user_id: i32,
     pub expires: i64
 }

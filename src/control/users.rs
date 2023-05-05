@@ -41,13 +41,12 @@ pub async fn get_users<T: SessionService + Debug>(
 pub async fn post_users<T: UserService + Debug>(
     Extension(service): Extension<T>,
     ValidatedJson(credentials): ValidatedJson<Credentials>
-) -> Result<impl IntoResponse, StatusCode> {
+) -> StatusCode {
     info!("Received registration attempt");
 
-    service.register(credentials).await.map_err(|err| {
-        match err {
-            UserCreationError::DuplicateEmail => StatusCode::CONFLICT,
-            UserCreationError::Unknown => StatusCode::INTERNAL_SERVER_ERROR
-        }
-    })
+    match service.register(credentials).await {
+        Ok(()) => StatusCode::CREATED,
+        Err(UserCreationError::DuplicateEmail) => StatusCode::CONFLICT,
+        Err(UserCreationError::Unknown) => StatusCode::INTERNAL_SERVER_ERROR
+    }
 }
