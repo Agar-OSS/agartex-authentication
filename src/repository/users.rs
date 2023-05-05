@@ -60,7 +60,7 @@ impl UserRepository for HttpUserRepository {
         match res.status() {
             StatusCode::CREATED => Ok(()),
             StatusCode::CONFLICT => {
-                warn!("Duplicate user {:?}", user_data);
+                warn!("Duplicate user");
                 Err(UserInsertError::Duplicate)
             },
             code => {
@@ -94,7 +94,7 @@ impl UserRepository for HttpUserRepository {
         let body = match res.status() {
             StatusCode::OK => res.json::<User>(),
             StatusCode::NOT_FOUND => {
-                warn!("Missing user {:?}", email);
+                warn!("Missing user");
                 return Err(UserGetError::Missing);
             },
             code => return {
