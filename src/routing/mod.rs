@@ -1,25 +1,28 @@
+mod sessions;
 mod users;
 
-use axum::{Router, Extension};
-use sqlx::PgPool;
+use axum::Router;
 
-use crate::{control::sessions::post_sessions, service::{sessions::HashSessionService, hash::BcryptHashService}, repository::{sessions::PgSessionRepository, users::HttpUserRepository}, constants::RESOURCE_MANAGEMENT_URL};
+use crate::{service::{sessions::HashSessionService, hash::BcryptHashService, users::HashUserService}, repository::{sessions::HttpSessionRepository, users::HttpUserRepository}, constants::{RESOURCE_MANAGEMENT_URL, SESSION_ID_GEN_RETRIES}};
 
-use self::users::users_router;
+use self::{users::users_router, sessions::sessions_router};
 
-pub fn main_router(pool: &PgPool) -> Router {
+pub fn main_router() -> Router {
     let users_url = RESOURCE_MANAGEMENT_URL.clone() + "/users";
+    let sessions_url = RESOURCE_MANAGEMENT_URL.clone() + "/sessions";
     
-    let sessions_service = HashSessionService::new(
-        PgSessionRepository::new(pool),
+    let users_service = HashUserService::new(
         HttpUserRepository::new(users_url.as_str()),
         BcryptHashService::new()
     );
-
-    let sessions_handler = axum::routing::post(post_sessions::<HashSessionService<PgSessionRepository, HttpUserRepository, BcryptHashService>>);
+    let sessions_service = HashSessionService::new(
+        HttpSessionRepository::new(sessions_url.as_str()),
+        HttpUserRepository::new(users_url.as_str()),
+        BcryptHashService::new(),
+        *SESSION_ID_GEN_RETRIES
+    );
 
     Router::new()
-        .nest("/users", users_router(users_url.as_str()))
-        .route("/sessions", sessions_handler)
-        .layer(Extension(sessions_service))
+        .nest("/users", users_router(users_service))
+        .nest("/sessions", sessions_router(sessions_service))
 }

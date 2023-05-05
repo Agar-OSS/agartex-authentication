@@ -3,9 +3,8 @@ use validator::{Validate, ValidationError};
 
 use crate::constants::{PASSWORD_SPECIAL_CHARS, PASSWORD_REGEX};
 
-#[derive(sqlx::FromRow, Debug, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct User {
-    #[sqlx(rename = "user_id")]
     pub id: i32,
     pub email: String,
     pub password_hash: String

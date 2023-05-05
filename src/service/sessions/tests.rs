@@ -1,6 +1,6 @@
 use mockall::predicate;
 
-use crate::{repository::{sessions::{MockSessionRepository, SessionDeleteError}, users::MockUserRepository}, service::hash::MockHashService};
+use crate::{repository::{sessions::{MockSessionRepository, SessionDeleteError}, users::MockUserRepository}, service::hash::MockHashService, domain::sessions::Session, constants::SESSION_ID_GEN_RETRIES};
 
 use super::*;
 
@@ -86,10 +86,10 @@ async fn hash_impl_login_normal() -> Result<(), LoginError> {
         .times(1)
         .returning(|_| Ok(()));
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
-    let session = service.login(mock_credentials()).await?;
-    assert_eq!(session.user, mock_user());
+    let session_data = service.login(mock_credentials()).await?;
+    assert_eq!(session_data.user_id, 1);
 
     Ok(())
 }
@@ -114,7 +114,7 @@ async fn hash_impl_login_get_user_error_missing() {
         .expect_insert()
         .never();
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Err(LoginError::NoUser), service.login(mock_credentials()).await);
 }
@@ -139,7 +139,7 @@ async fn hash_impl_login_get_user_error_unknown() {
         .expect_insert()
         .never();
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Err(LoginError::Unknown), service.login(mock_credentials()).await);
 }
@@ -166,7 +166,7 @@ async fn hash_impl_login_hash_verify_false() {
         .expect_insert()
         .never();
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Err(LoginError::NoUser), service.login(mock_credentials()).await);
 }
@@ -193,7 +193,7 @@ async fn hash_impl_login_hash_verify_error() {
         .expect_insert()
         .never();
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Err(LoginError::Unknown), service.login(mock_credentials()).await);
 }
@@ -221,7 +221,7 @@ async fn hash_impl_login_session_insert_error() {
         .times(1)
         .returning(|_| Err(SessionInsertError::Unknown));
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Err(LoginError::Unknown), service.login(mock_credentials()).await);
 }
@@ -238,7 +238,7 @@ async fn hash_impl_verify_normal() {
         .times(1)
         .returning(|_| Ok(mock_ok_session()));
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Ok(mock_user()), service.verify(&mock_session_id()).await);
 }
@@ -261,7 +261,7 @@ async fn hash_impl_verify_invalid_timestamp() {
         .times(1)
         .returning(|_| Ok(()));
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Err(SessionVerifyError::Missing), service.verify(&mock_session_id()).await);
 }
@@ -284,7 +284,7 @@ async fn hash_impl_verify_invalid_timestamp_delete_error() {
         .times(1)
         .returning(|_| Err(SessionDeleteError::Unknown));
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Err(SessionVerifyError::Unknown), service.verify(&mock_session_id()).await);
 }
@@ -307,7 +307,7 @@ async fn hash_impl_verify_expired_timestamp() {
         .times(1)
         .returning(|_| Ok(()));
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Err(SessionVerifyError::Missing), service.verify(&mock_session_id()).await);
 }
@@ -330,7 +330,7 @@ async fn hash_impl_verify_expired_timestamp_delete_error() {
         .times(1)
         .returning(|_| Err(SessionDeleteError::Unknown));
 
-    let service = HashSessionService::new(session_repository, user_repository, hash_service);
+    let service = HashSessionService::new(session_repository, user_repository, hash_service, *SESSION_ID_GEN_RETRIES);
 
     assert_eq!(Err(SessionVerifyError::Unknown), service.verify(&mock_session_id()).await);
 }

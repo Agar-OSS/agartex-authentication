@@ -4,7 +4,7 @@ use axum::async_trait;
 use http::StatusCode;
 use mockall::automock;
 use reqwest::{Client, Url};
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::domain::users::{User, UserData};
 
@@ -43,7 +43,7 @@ impl HttpUserRepository {
 
 #[async_trait]
 impl UserRepository for HttpUserRepository {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(email = user_data.email))]
     async fn insert(&self, user_data: UserData) -> Result<(), UserInsertError> {
         let req = self.client
             .post(self.manager_users_url.clone())
@@ -59,8 +59,14 @@ impl UserRepository for HttpUserRepository {
 
         match res.status() {
             StatusCode::CREATED => Ok(()),
-            StatusCode::CONFLICT => Err(UserInsertError::Duplicate),
-            _ => Err(UserInsertError::Unknown)
+            StatusCode::CONFLICT => {
+                warn!("Duplicate user");
+                Err(UserInsertError::Duplicate)
+            },
+            code => {
+                error!("Unexpected code {:?}", code);
+                Err(UserInsertError::Unknown)
+            }
         }
     }
 
@@ -75,8 +81,7 @@ impl UserRepository for HttpUserRepository {
             }
         };
         
-        let req = self.client
-            .get(url);
+        let req = self.client.get(url);
 
         let res = match req.send().await {
             Ok(res) => res,
@@ -88,8 +93,14 @@ impl UserRepository for HttpUserRepository {
 
         let body = match res.status() {
             StatusCode::OK => res.json::<User>(),
-            StatusCode::NOT_FOUND => return Err(UserGetError::Missing),
-            _ => return Err(UserGetError::Unknown)
+            StatusCode::NOT_FOUND => {
+                warn!("Missing user");
+                return Err(UserGetError::Missing);
+            },
+            code => return {
+                error!(%code);
+                Err(UserGetError::Unknown)
+            }
         };
 
         body.await.map_err(|err| {

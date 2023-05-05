@@ -47,7 +47,7 @@ where
     U: UserRepository + Send + Sync,
     H: HashService + Send + Sync
 {
-    #[tracing::instrument(skip(self, credentials), fields(email = credentials.email))]
+    #[tracing::instrument(skip_all, fields(email = credentials.email))]
     async fn register(&self, credentials: Credentials) -> Result<(), UserCreationError> {
         info!("Attempting to register user");
         let password_hash = match self.hash_service.hash(&credentials.password) {
