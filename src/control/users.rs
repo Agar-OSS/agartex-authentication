@@ -6,7 +6,7 @@ use tracing::{info, warn};
 
 use crate::{service::{sessions::{SessionService, SessionVerifyError}, users::{UserService, UserCreationError}}, constants::{SESSION_COOKIE_NAME, USER_ID_HEADER}, validation::ValidatedJson, domain::users::Credentials};
 
-#[tracing::instrument(skip(service))]
+#[tracing::instrument(skip_all)]
 pub async fn get_users<T: SessionService + Debug>(
     Extension(service): Extension<T>,
     jar: CookieJar

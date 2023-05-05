@@ -111,6 +111,7 @@ where
         Err(LoginError::Unknown)
     }
 
+    #[tracing::instrument(skip_all)]
     async fn verify(&self, id: &str) -> Result<User, SessionVerifyError> {
         let session = match self.session_repository.get(id).await {
             Ok(session) => session,

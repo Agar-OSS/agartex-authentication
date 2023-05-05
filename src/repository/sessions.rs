@@ -77,16 +77,9 @@ impl SessionRepository for HttpSessionRepository {
 
     #[tracing::instrument(skip_all)]
     async fn get(&self, id: &str) -> Result<Session, SessionGetError> {
-        let mut url = self.manager_sessions_url.clone();
-        match url.path_segments_mut() {
-            Ok(mut path) => path.extend([id]),
-            Err(_) => {
-                error!("Bad Resource Management URL: {:?}", self.manager_sessions_url);
-                return Err(SessionGetError::Unknown);
-            }
-        };
-
-        let req = self.client.get(url);
+        let req = self.client
+            .get(self.manager_sessions_url.clone())
+            .bearer_auth(id);
     
         let res = match req.send().await {
             Ok(res) => res,
@@ -114,18 +107,11 @@ impl SessionRepository for HttpSessionRepository {
         })
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all)]
     async fn delete(&self, id: &str) -> Result<(), SessionDeleteError> {
-        let mut url = self.manager_sessions_url.clone();
-        match url.path_segments_mut() {
-            Ok(mut path) => path.extend([id]),
-            Err(_) => {
-                error!("Bad Resource Management URL: {:?}", self.manager_sessions_url);
-                return Err(SessionDeleteError::Unknown);
-            }
-        };
-
-        let req = self.client.get(url);
+        let req = self.client
+            .get(self.manager_sessions_url.clone())
+            .bearer_auth(id);
     
         let res = match req.send().await {
             Ok(res) => res,
