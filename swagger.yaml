@@ -13,6 +13,33 @@ tags:
     description: User CRUD operations
 paths:
   /sessions:
+    get:
+      summary: Gets the user associated with the given sessionId in RSESSID cookie
+      tags:
+        - auth
+      security:
+        - session_id: []
+      parameters:
+        - in: cookie
+          name: RSESSID
+          schema:
+            type: string
+          required: true
+          description: ID of the session
+      operationId: verify
+      responses:
+        200:
+          description: Adds user ID to headers
+          headers:
+            X-User-Id:
+              description: Authenticated User ID
+              schema:
+                type: integer
+                example: 1234
+        400:
+          description: Malformed request
+        401:
+          description: Could not verify the given session ID
     post:
       summary: Creates a new login session for the given user
       tags:
@@ -49,33 +76,6 @@ paths:
                 type: string
   
   /users:
-    get:
-      summary: Gets the user associated with the given sessionId in RSESSID cookie
-      tags:
-        - auth
-      security:
-        - session_id: []
-      parameters:
-        - in: cookie
-          name: RSESSID
-          schema:
-            type: string
-          required: true
-          description: ID of the session
-      operationId: verify
-      responses:
-        200:
-          description: Adds user ID to headers
-          headers:
-            X-User-Id:
-              description: Authenticated User ID
-              schema:
-                type: integer
-                example: 1234
-        400:
-          description: Malformed request
-        401:
-          description: Could not verify the given session ID
     post:
       summary: Registers user
       tags:
