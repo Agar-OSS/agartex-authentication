@@ -110,7 +110,7 @@ impl SessionRepository for HttpSessionRepository {
     #[tracing::instrument(skip_all)]
     async fn delete(&self, id: &str) -> Result<(), SessionDeleteError> {
         let req = self.client
-            .get(self.manager_sessions_url.clone())
+            .delete(self.manager_sessions_url.clone())
             .bearer_auth(id);
     
         let res = match req.send().await {
