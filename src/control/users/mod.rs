@@ -18,3 +18,6 @@ pub async fn post_users<T: UserService + Debug>(
         Err(UserCreationError::Unknown) => StatusCode::INTERNAL_SERVER_ERROR
     }
 }
+
+#[cfg(test)]
+mod tests;

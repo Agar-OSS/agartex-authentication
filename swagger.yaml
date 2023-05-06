@@ -19,13 +19,6 @@ paths:
         - auth
       security:
         - session_id: []
-      parameters:
-        - in: cookie
-          name: RSESSID
-          schema:
-            type: string
-          required: true
-          description: ID of the session
       operationId: verify
       responses:
         200:
@@ -40,6 +33,8 @@ paths:
           description: Malformed request
         401:
           description: Could not verify the given session ID
+        422:
+          description: Session ID validation errors
     post:
       summary: Creates a new login session for the given user
       tags:
@@ -74,6 +69,28 @@ paths:
             text/plain:
               schema:
                 type: string
+    delete:
+      summary: Deletes the session given in RSESSID cookie
+      tags:
+        - auth
+      security:
+        - session_id: []
+      operationId: logout
+      responses:
+        200:
+          description: Successfully deleted session
+          headers:
+            Set-Cookie:
+              description: Session token
+              schema:
+                type: string
+                example: RSESSID=; Expires=now - 1 days
+        400:
+          description: Malformed request
+        401:
+          description: No session ID provided
+        422:
+          description: Session ID validation errors
   
   /users:
     post:

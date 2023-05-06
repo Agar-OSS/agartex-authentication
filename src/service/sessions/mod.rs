@@ -20,11 +20,16 @@ pub enum SessionVerifyError {
     Unknown
 }
 
+pub enum LogoutError {
+    Unknown
+}
+
 #[automock]
 #[async_trait]
 pub trait SessionService {
     async fn login(&self, credentials: Credentials) -> Result<SessionData, LoginError>;
     async fn verify(&self, id: &str) -> Result<User, SessionVerifyError>;
+    async fn logout(&self, id: &str) -> Result<(), LogoutError>;
 }
 
 #[derive(Debug, Clone)]
@@ -137,6 +142,14 @@ where
         }
 
         Ok(session.user)
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn logout(&self, id: &str) -> Result<(), LogoutError> {
+        self.session_repository
+            .delete(id)
+            .await
+            .map_err(|_| LogoutError::Unknown)
     }
 }
 
