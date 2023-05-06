@@ -79,6 +79,12 @@ paths:
       responses:
         200:
           description: Successfully deleted session
+          headers:
+            Set-Cookie:
+              description: Session token
+              schema:
+                type: string
+                example: RSESSID=; Expires=now - 1 days
         400:
           description: Malformed request
         401:

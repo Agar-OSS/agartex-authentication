@@ -144,7 +144,11 @@ async fn delete_sessions_normal() {
         .times(1)
         .returning(|_| Ok(()));
 
-    assert_eq!(StatusCode::OK, delete_sessions(Extension(session_service), mock_cookie_jar()).await);
+    let jar = delete_sessions(Extension(session_service), mock_cookie_jar()).await.unwrap();
+    let cookie = jar.get(&SESSION_COOKIE_NAME).unwrap();
+
+    assert_eq!("", cookie.value());
+    assert!(cookie.expires().unwrap().datetime().unwrap() < OffsetDateTime::now_utc());
 }
 
 #[tokio::test]
@@ -157,5 +161,7 @@ async fn delete_sessions_unknown_error() {
         .times(1)
         .returning(|_| Err(LogoutError::Unknown));
 
-    assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, delete_sessions(Extension(session_service), mock_cookie_jar()).await);
+    let err = delete_sessions(Extension(session_service), mock_cookie_jar()).await.unwrap_err();
+
+    assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, err);
 }

@@ -2,11 +2,11 @@ use std::fmt::Debug;
 
 use axum::{Extension, Json, http::StatusCode, response::AppendHeaders};
 use axum_extra::extract::{CookieJar, cookie::Cookie};
-use cookie::time::OffsetDateTime;
+use cookie::time::{OffsetDateTime, Duration};
 use tracing::{error, info, warn};
 use validator::Validate;
 
-use crate::{domain::{users::Credentials, sessions::SessionId}, service::sessions::{SessionService, LoginError, SessionVerifyError, LogoutError}, constants::{SESSION_COOKIE_NAME, USER_ID_HEADER}};
+use crate::{domain::{users::Credentials, sessions::SessionId}, service::sessions::{SessionService, LoginError, SessionVerifyError, LogoutError}, constants::{SESSION_COOKIE_NAME, USER_ID_HEADER, SESSION_EXPIRE_BUFFER_DAYS}};
 
 #[tracing::instrument(skip_all, fields(email = credentials.email))]
 pub async fn post_sessions<T: SessionService + Debug>(
@@ -79,31 +79,36 @@ pub async fn get_sessions<T: SessionService + Debug>(
 pub async fn delete_sessions<T: SessionService + Debug>(
     Extension(service): Extension<T>,
     jar: CookieJar
-) -> StatusCode {
+) -> Result<CookieJar, StatusCode> {
     info!("Received logout attempt");
     let session_id = match jar.get(SESSION_COOKIE_NAME.as_str()) {
         Some(cookie) => cookie.value(),
         None => {
             warn!("No session provided!");
-            return StatusCode::UNAUTHORIZED;
+            return Err(StatusCode::UNAUTHORIZED);
         }
     };
 
     if let Err(errs) = SessionId(String::from(session_id)).validate() {
         warn!("Session ID: {}, Validation errors: {}", session_id, errs);
-        return StatusCode::UNPROCESSABLE_ENTITY;
+        return Err(StatusCode::UNPROCESSABLE_ENTITY);
     }
 
-    match service.logout(session_id).await {
+    let cookie = match service.logout(session_id).await {
         Ok(()) => {
-            info!("Successfully logged out session {}", session_id);
-            StatusCode::OK
+            let expiration = OffsetDateTime::now_utc().saturating_sub(Duration::days(*SESSION_EXPIRE_BUFFER_DAYS));
+            Cookie::build(SESSION_COOKIE_NAME.as_str(), "")
+                .expires(expiration)
+                .finish()
         },
         Err(LogoutError::Unknown) => {
             error!("Unable to process logout attempt");
-            StatusCode::INTERNAL_SERVER_ERROR
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
-    }
+    };
+
+    info!("Successfully logged out session {}", session_id);
+    Ok(jar.add(cookie))
 }
 
 #[cfg(test)]
