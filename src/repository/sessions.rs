@@ -122,7 +122,7 @@ impl SessionRepository for HttpSessionRepository {
         };
 
         match res.status() {
-            StatusCode::OK => Ok(()),
+            StatusCode::NO_CONTENT => Ok(()),
             code => {
                 error!("Unexpected code {:?}", code);
                 Err(SessionDeleteError::Unknown)
