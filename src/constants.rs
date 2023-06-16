@@ -35,7 +35,7 @@ lazy_static! {
     pub static ref SESSION_ID_GEN_RETRIES: u32 = load_env_or_default("SESSION_ID_GEN_RETRIES", 5);
     pub static ref SESSION_EXPIRE_BUFFER_DAYS: i64 = load_env_or_default("EXPIRED_BUFFER_DAYS", 1);
     pub static ref IS_COOKIE_SECURE: bool = load_env_or_default("IS_COOKIE_SECURE", false);
-    pub static ref USER_ID_HEADER: String = load_env_or_default("USER_ID_HEADER", String::from("X-User-Id"));
+    pub static ref USER_ID_HEADER: String = load_env_or_default("USER_ID_HEADER", String::from("X-User-Id")).to_lowercase();
     pub static ref USER_HEADER_NAME: HeaderName = HeaderName::from_static(USER_ID_HEADER.as_str());
 
     pub static ref PASSWORD_REGEX: Regex = Regex::new(format!("^[A-Za-z0-9{}]*$", PASSWORD_SPECIAL_CHARS).as_str()).unwrap();

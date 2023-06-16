@@ -27,10 +27,13 @@ pub async fn post_sessions<T: SessionService + Debug>(
         Ok(session) => session
     };
 
+    info!("Extracted session {:?}", session);
+
     let cookie = Cookie::build(SESSION_COOKIE_NAME.as_str(), session.id)
         .expires(OffsetDateTime::from_unix_timestamp(session.expires).unwrap())
         .http_only(true)
         .secure(*IS_COOKIE_SECURE)
+        .same_site(cookie::SameSite::Strict)
         .finish();
 
     Ok((jar.add(cookie), TypedHeader(XUserId(session.user_id)), StatusCode::CREATED))
