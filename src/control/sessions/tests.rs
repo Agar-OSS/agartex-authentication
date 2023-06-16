@@ -57,13 +57,15 @@ async fn post_sessions_normal() {
         .times(1)
         .return_once(|_| Ok(session_data_cpy));
 
-    let (jar, status) = post_sessions(Extension(session_service), CookieJar::new(), Json(mock_credentials())).await.unwrap();
+    let (jar, TypedHeader(XUserId(user_id)), status) = post_sessions(Extension(session_service), CookieJar::new(), Json(mock_credentials())).await.unwrap();
     assert_eq!(StatusCode::CREATED, status);
 
     let cookie = jar.get(SESSION_COOKIE_NAME.as_str()).unwrap();
     assert_eq!(session_data.id, cookie.value());
     assert_eq!(session_data.expires, cookie.expires().unwrap().datetime().unwrap().unix_timestamp());
     assert!(cookie.http_only().unwrap());
+    assert_eq!(*IS_COOKIE_SECURE, cookie.secure().unwrap());
+    assert_eq!(session_data.user_id, user_id);
 }
 
 #[tokio::test]
@@ -102,8 +104,8 @@ async fn get_sessions_normal() {
         .times(1)
         .returning(|_| Ok(mock_user()));
 
-    let headers = get_sessions(Extension(session_service), mock_cookie_jar()).await.unwrap();
-    assert_eq!((USER_ID_HEADER.as_str(), 1), headers.0[0]);
+    let TypedHeader(XUserId(user_id)) = get_sessions(Extension(session_service), mock_cookie_jar()).await.unwrap();
+    assert_eq!(mock_user().id, user_id);
 }
 
 #[tokio::test]

@@ -1,4 +1,4 @@
-use axum::{async_trait, extract::{FromRequest, rejection::JsonRejection}, Json, RequestExt, response::IntoResponse};
+use axum::{async_trait, extract::{FromRequest, rejection::JsonRejection}, Json, response::IntoResponse};
 use http::{Request, StatusCode};
 use validator::{Validate, ValidationErrors};
 
@@ -24,13 +24,13 @@ where
     B: Send + 'static,
     S: Send + Sync,
     T: Validate + 'static,
-    Json<T>: FromRequest<(), B>,
-    <Json<T> as FromRequest<(), B>>::Rejection: Into<JsonRejection>
+    Json<T>: FromRequest<S, B>,
+    <Json<T> as FromRequest<S, B>>::Rejection: Into<JsonRejection>
 {
     type Rejection = ValidatedJsonRejection;
 
-    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
-        let Self(data) = match req.extract::<Json<T>, _>().await {
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        let Self(data) = match Json::from_request(req, state).await {
             Ok(Json(data)) => Self(data),
             Err(err) => return Err(ValidatedJsonRejection::JsonRejection(err.into()))
         };

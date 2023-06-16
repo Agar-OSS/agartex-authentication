@@ -1,19 +1,19 @@
 use std::fmt::Debug;
 
-use axum::{Extension, Json, http::StatusCode, response::AppendHeaders};
+use axum::{Extension, Json, http::StatusCode, TypedHeader};
 use axum_extra::extract::{CookieJar, cookie::Cookie};
 use cookie::time::{OffsetDateTime, Duration};
 use tracing::{error, info, warn};
 use validator::Validate;
 
-use crate::{domain::{users::Credentials, sessions::SessionId}, service::sessions::{SessionService, LoginError, SessionVerifyError, LogoutError}, constants::{SESSION_COOKIE_NAME, USER_ID_HEADER, SESSION_EXPIRE_BUFFER_DAYS}};
+use crate::{domain::{users::Credentials, sessions::SessionId}, service::sessions::{SessionService, LoginError, SessionVerifyError, LogoutError}, constants::{SESSION_COOKIE_NAME, SESSION_EXPIRE_BUFFER_DAYS, IS_COOKIE_SECURE}, extract::XUserId};
 
 #[tracing::instrument(skip_all, fields(email = credentials.email))]
 pub async fn post_sessions<T: SessionService + Debug>(
     Extension(service): Extension<T>,
     jar: CookieJar,
     Json(credentials): Json<Credentials>
-) -> Result<(CookieJar, StatusCode), StatusCode> {
+) -> Result<(CookieJar, TypedHeader<XUserId>, StatusCode), StatusCode> {
     info!("Received login attempt");
     let session = match service.login(credentials).await {
         Err(LoginError::NoUser) =>  {
@@ -30,17 +30,17 @@ pub async fn post_sessions<T: SessionService + Debug>(
     let cookie = Cookie::build(SESSION_COOKIE_NAME.as_str(), session.id)
         .expires(OffsetDateTime::from_unix_timestamp(session.expires).unwrap())
         .http_only(true)
-        // .secure(true) <-- add this when TLS is set up
+        .secure(*IS_COOKIE_SECURE)
         .finish();
 
-    Ok((jar.add(cookie), StatusCode::CREATED))
+    Ok((jar.add(cookie), TypedHeader(XUserId(session.user_id)), StatusCode::CREATED))
 }
 
 #[tracing::instrument(skip_all)]
 pub async fn get_sessions<T: SessionService + Debug>(
     Extension(service): Extension<T>,
     jar: CookieJar
-) -> Result<AppendHeaders<[(&'static str, i32); 1]>, StatusCode> {
+) -> Result<TypedHeader<XUserId>, StatusCode> {
     info!("Received session verification attempt");
     let session_id = match jar.get(SESSION_COOKIE_NAME.as_str()) {
         Some(cookie) => cookie.value(),
@@ -67,12 +67,8 @@ pub async fn get_sessions<T: SessionService + Debug>(
         Ok(session) => session
     };
 
-    let headers = AppendHeaders([
-        (USER_ID_HEADER.as_str(), user.id)
-    ]);
-
     info!("Successfully verified session");
-    Ok(headers)
+    Ok(TypedHeader(XUserId(user.id)))
 }
 
 #[tracing::instrument(skip_all)]
