@@ -33,7 +33,7 @@ pub async fn post_sessions<T: SessionService + Debug>(
         .expires(OffsetDateTime::from_unix_timestamp(session.expires).unwrap())
         .http_only(true)
         .secure(*IS_COOKIE_SECURE)
-        .same_site(cookie::SameSite::Strict)
+        // .same_site(cookie::SameSite::Strict)
         .finish();
 
     Ok((jar.add(cookie), TypedHeader(XUserId(session.user_id)), StatusCode::CREATED))
