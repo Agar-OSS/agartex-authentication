@@ -57,9 +57,10 @@ paths:
               schema:
                 type: string
                 example: RSESSID=token_value; Secure; HttpOnly
-            X-User-Id:
-              description: Authenticated User ID
+          content:
+            application/json:
               schema:
+                description: Authenticated User ID
                 type: integer
                 example: 1234
         400:

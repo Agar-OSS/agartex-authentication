@@ -57,7 +57,7 @@ async fn post_sessions_normal() {
         .times(1)
         .return_once(|_| Ok(session_data_cpy));
 
-    let (jar, TypedHeader(XUserId(user_id)), status) = post_sessions(Extension(session_service), CookieJar::new(), Json(mock_credentials())).await.unwrap();
+    let (status, jar, Json(user)) = post_sessions(Extension(session_service), CookieJar::new(), Json(mock_credentials())).await.unwrap();
     assert_eq!(StatusCode::CREATED, status);
 
     let cookie = jar.get(SESSION_COOKIE_NAME.as_str()).unwrap();
@@ -65,7 +65,7 @@ async fn post_sessions_normal() {
     assert_eq!(session_data.expires, cookie.expires().unwrap().datetime().unwrap().unix_timestamp());
     assert!(cookie.http_only().unwrap());
     assert_eq!(*IS_COOKIE_SECURE, cookie.secure().unwrap());
-    assert_eq!(session_data.user_id, user_id);
+    assert_eq!(session_data.user_id, user.user_id);
 }
 
 #[tokio::test]
