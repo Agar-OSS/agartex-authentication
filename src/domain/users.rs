@@ -58,3 +58,8 @@ pub struct UserData {
     pub email: String,
     pub password_hash: String
 }
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct PubUserData {
+    pub user_id: i32,
+}

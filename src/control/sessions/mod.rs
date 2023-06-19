@@ -6,14 +6,14 @@ use cookie::time::{OffsetDateTime, Duration};
 use tracing::{error, info, warn};
 use validator::Validate;
 
-use crate::{domain::{users::Credentials, sessions::SessionId}, service::sessions::{SessionService, LoginError, SessionVerifyError, LogoutError}, constants::{SESSION_COOKIE_NAME, SESSION_EXPIRE_BUFFER_DAYS, IS_COOKIE_SECURE}, extract::XUserId};
+use crate::{domain::{users::{Credentials, PubUserData}, sessions::SessionId}, service::sessions::{SessionService, LoginError, SessionVerifyError, LogoutError}, constants::{SESSION_COOKIE_NAME, SESSION_EXPIRE_BUFFER_DAYS, IS_COOKIE_SECURE}, extract::XUserId};
 
 #[tracing::instrument(skip_all, fields(email = credentials.email))]
 pub async fn post_sessions<T: SessionService + Debug>(
     Extension(service): Extension<T>,
     jar: CookieJar,
     Json(credentials): Json<Credentials>
-) -> Result<(CookieJar, TypedHeader<XUserId>, StatusCode), StatusCode> {
+) -> Result<(StatusCode, CookieJar, Json<PubUserData>), StatusCode> {
     info!("Received login attempt");
     let session = match service.login(credentials).await {
         Err(LoginError::NoUser) =>  {
@@ -36,7 +36,11 @@ pub async fn post_sessions<T: SessionService + Debug>(
         // .same_site(cookie::SameSite::Strict)
         .finish();
 
-    Ok((jar.add(cookie), TypedHeader(XUserId(session.user_id)), StatusCode::CREATED))
+    let user_data = PubUserData {
+        user_id: session.user_id,
+    };
+
+    Ok((StatusCode::CREATED, jar.add(cookie), Json(user_data)))
 }
 
 #[tracing::instrument(skip_all)]
